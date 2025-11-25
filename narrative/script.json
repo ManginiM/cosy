@@ -1,22 +1,22 @@
 {
-  "title": {
-    "lines": [
-      "Narrador: Hoy acompañaremos a una pequeña en un paseo tranquilo.",
-      "Narrador: Tus decisiones abrirán distintos caminos."
-    ]
+  "house": {
+    "thoughts": {
+      "wake_up": "No está ahí. No está ahí. Solo vestite. No la mires.",
+      "see_ghost": "¡La miré! No debía mirarla...",
+      "get_dressed": "Ropa puesta. Ahora puedo salir..."
+    }
   },
   "forest_intro": {
     "lines": [
-      "Narrador: Un bosque suave, hojas que susurran...",
-      "Narrador: Haz clic en los objetos brillantes."
+      "El bosque parece tranquilo...",
+      "Pero siento que no estoy sola."
     ]
   },
   "kind_choice": {
-    "good": "Narrador: Ese gesto amable quedará en su recuerdo.",
-    "neutral": "Narrador: A veces, mirar también es elegir."
+    "good": "Decidiste ser amable con el espíritu."
   },
   "ending": {
-    "kind": "Narrador: En la bondad, encontró un pequeño tesoro.",
-    "neutral": "Narrador: Tal vez otra vez el camino revele más."
+    "kind": "Encontraste paz mediante la comprensión.",
+    "neutral": "Seguiste tu camino en equilibrio."
   }
 }

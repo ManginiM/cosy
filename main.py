@@ -3,6 +3,7 @@ import sys
 from settings import WIDTH, HEIGHT, TITLE, FPS
 from engine.scene_manager import SceneManager
 from scenes.title import TitleScene
+from game.state import GameState  # Importamos el GameState
 
 def main():
     pygame.init()
@@ -11,7 +12,9 @@ def main():
     pygame.display.set_caption(TITLE)
     clock = pygame.time.Clock()
 
-    manager = SceneManager(screen)
+    # Creamos el estado del juego y lo pasamos al manager
+    game_state = GameState()
+    manager = SceneManager(screen, game_state)  # Pasamos game_state
     manager.push(TitleScene(manager))
 
     while True:
