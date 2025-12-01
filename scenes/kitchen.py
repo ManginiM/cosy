@@ -13,38 +13,48 @@ class KitchenScene(Scene):
         self.narrator = Narrator(self.font)
         self.stats_display = StatsDisplay(game_state)
 
-        # Cargar imágenes
+        # Cargar imágenes con escala más pequeña para el fondo
         try:
             self.bg = pygame.image.load("assets/images/cocina_bg.png").convert()
-            self.bg = pygame.transform.smoothscale(self.bg, (WIDTH, HEIGHT))
+            # Reducir el tamaño del fondo para que no ocupe toda la pantalla
+            scaled_width = int(WIDTH * 0.9)
+            scaled_height = int(HEIGHT * 0.9)
+            self.bg = pygame.transform.smoothscale(self.bg, (scaled_width, scaled_height))
+            self.bg_x = (WIDTH - scaled_width) // 2  # Centrar el fondo
+            self.bg_y = (HEIGHT - scaled_height) // 2
         except:
             self.bg = pygame.Surface((WIDTH, HEIGHT))
             self.bg.fill((200, 180, 150))
+            self.bg_x = 0
+            self.bg_y = 0
 
-        # Mesa más compacta y hacia el costado
+        # Mesa más grande y más alta
         try:
             self.mesa_img = pygame.image.load("assets/images/mesa_icon.png").convert_alpha()
-            self.mesa_img = pygame.transform.smoothscale(self.mesa_img, (250, 180))  # Más compacta
+            self.mesa_img = pygame.transform.smoothscale(self.mesa_img, (320, 240))  # Más grande
         except:
             self.mesa_img = None
 
+        # Niño fantasma más grande y más alto
         try:
             self.nino_fantasma = pygame.image.load("assets/images/fantama_sentado_npc.png").convert_alpha()
-            self.nino_fantasma = pygame.transform.smoothscale(self.nino_fantasma, (100, 150))
+            self.nino_fantasma = pygame.transform.smoothscale(self.nino_fantasma, (140, 210))  # Más grande
         except:
             self.nino_fantasma = None
 
         # Estados de Daniela sentada
         self.daniela_sentada_states = {}
         try:
-            self.daniela_sentada_states["pijama"] = pygame.image.load("assets/images/sentada_pijama_pr.png").convert_alpha()
-            self.daniela_sentada_states["pijama"] = pygame.transform.smoothscale(self.daniela_sentada_states["pijama"], (100, 200))
+            img = pygame.image.load("assets/images/sentada_pijama_pr.png").convert_alpha()
+            img = pygame.transform.flip(img, True, False)  # Voltear para que mire a la derecha
+            self.daniela_sentada_states["pijama"] = pygame.transform.smoothscale(img, (120, 240))
         except:
             pass
 
         try:
-            self.daniela_sentada_states["vestida"] = pygame.image.load("assets/images/sentada_pr.png").convert_alpha()
-            self.daniela_sentada_states["vestida"] = pygame.transform.smoothscale(self.daniela_sentada_states["vestida"], (100, 200))
+            img = pygame.image.load("assets/images/sentada_pr.png").convert_alpha()
+            img = pygame.transform.flip(img, True, False)  # Voltear para que mire a la derecha
+            self.daniela_sentada_states["vestida"] = pygame.transform.smoothscale(img, (120, 240))
         except:
             pass
 
@@ -64,12 +74,16 @@ class KitchenScene(Scene):
 
         try:
             img = pygame.image.load("assets/images/parada_costado_pr.png").convert_alpha()
+            # Voltear esta imagen para que mire a la derecha
+            img = pygame.transform.flip(img, True, False)
             self.daniela_estados_pie["parada_costado"] = pygame.transform.smoothscale(img, (120, 240))
         except:
             pass
 
         try:
             img = pygame.image.load("assets/images/caminando_pr.png").convert_alpha()
+            # Voltear esta imagen para que mire a la derecha
+            img = pygame.transform.flip(img, True, False)
             self.daniela_estados_pie["caminando"] = pygame.transform.smoothscale(img, (120, 240))
         except:
             pass
@@ -86,15 +100,34 @@ class KitchenScene(Scene):
         except:
             pass
 
-        # Posiciones - mesa al costado
-        self.mesa_pos = (WIDTH - 400, HEIGHT - 300)  # Mesa a la derecha
-        self.mesa_zone = pygame.Rect(WIDTH - 500, HEIGHT - 100, 100, 150)
-        self.nino_pos = (WIDTH - 350, HEIGHT - 320)
+        # Daniela asustada
+        try:
+            self.daniela_asustada = pygame.image.load("assets/images/asustada_pr.png").convert_alpha()
+            self.daniela_asustada = pygame.transform.smoothscale(self.daniela_asustada, (120, 240))
+        except:
+            self.daniela_asustada = None
+
+        # Posiciones - mesa más baja y más grande
+        self.mesa_pos = (WIDTH - 400, HEIGHT - 180)  # Mesa más alta (Y disminuido)
+        self.mesa_zone = pygame.Rect(WIDTH - 500, HEIGHT - 230, 300, 150)
+        self.nino_pos = (WIDTH - 350, HEIGHT - 200)  # Niño más alto también
+        
+        # Zona de la comida
+        self.comida_zone = pygame.Rect(200, HEIGHT - 350, 100, 100)
+        self.comida_img = None
+        try:
+            # Usar mesa_icon como placeholder para la comida
+            self.comida_img = pygame.image.load("assets/images/mesa_icon.png").convert_alpha()
+            self.comida_img = pygame.transform.smoothscale(self.comida_img, (80, 80))
+        except:
+            pass
         
         # Daniela empieza fuera de la mesa
         self.daniela_pos = pygame.Vector2(WIDTH // 2, HEIGHT - 150)
         self.daniela_target = self.daniela_pos.copy()
-        self.exit_zone = pygame.Rect(WIDTH - 200, 100, 150, 80)
+        
+        # Zona de salida en el extremo derecho
+        self.exit_zone = pygame.Rect(WIDTH - 100, HEIGHT // 2 - 100, 100, 200)
 
         # Variables de control
         self.vestida = game_state.flags.get("vestida", False)
@@ -104,16 +137,29 @@ class KitchenScene(Scene):
         self.facing_right = True
         self.is_moving = False
         self.is_sentada = False  # Empieza de pie
+        self.has_comida = False  # No tiene comida inicialmente
+        self.comida_timer = 0
+        self.nino_sospechoso = False
+        self.en_panico = False  # Nuevo estado para cuando entra en pánico
 
         self.input_cooldown = 0.5
         self.transition_timer = 0
         self.last_click_time = 0
+        
+        # Zona de proximidad para agarrar comida
+        self.comida_proximity_zone = pygame.Rect(150, HEIGHT - 400, 200, 200)
+        
+        # Variables para la secuencia de pánico
+        self.panic_sequence_step = 0
+        self.panic_sequence_timer = 0
 
     def on_enter(self):
+        # Configurar el narrador para que los diálogos duren más tiempo
+        self.narrator.display_time = 4.0  # 4 segundos por diálogo
         self.narrator.say("¿Por qué me mira así? Solo quiero desayunar. No soy nadie.")
 
     def handle_event(self, event, game_state):
-        if self.input_cooldown > 0:
+        if self.input_cooldown > 0 or self.en_panico or self.panic_sequence_step > 0:
             return
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
@@ -130,12 +176,28 @@ class KitchenScene(Scene):
                 self.daniela_target = self.daniela_pos.copy()
                 return
 
-            # Si no está sentada, puede moverse o sentarse
+            # Si no está sentada, puede moverse, tomar comida o sentarse
             if not self.is_sentada:
-                # Si hace clic en la mesa, sentarse
+                # Si hace clic en la comida, verificar proximidad para tomarla
+                if self.comida_zone.collidepoint(x, y) and not self.has_comida:
+                    # Verificar si Daniela está cerca de la comida
+                    if self.comida_proximity_zone.collidepoint(self.daniela_pos):
+                        self.has_comida = True
+                        self.narrator.say("Tengo mi comida. Ahora puedo sentarme a desayunar.")
+                    # No mostrar mensaje si no está cerca, solo no hacer nada
+                    return
+                
+                # Si hace clic en la mesa, intentar sentarse
                 if self.mesa_zone.collidepoint(x, y):
-                    self.is_sentada = True
-                    self.narrator.say("Voy a desayunar un poco...")
+                    if self.has_comida:
+                        self.is_sentada = True
+                        self.comida_timer = 5.0  # 5 segundos para desayunar
+                        self.narrator.say("Voy a desayunar un poco...")
+                    else:
+                        # Si se sienta sin comida, el niño se da cuenta y entra en pánico
+                        self.is_sentada = True
+                        # Breve pausa antes de la reacción
+                        self.comida_timer = 1.0
                     return
                 
                 # Movimiento normal
@@ -156,21 +218,61 @@ class KitchenScene(Scene):
         if self.input_cooldown > 0:
             self.input_cooldown -= dt
 
+        # Manejar secuencia de pánico
+        if self.panic_sequence_step > 0:
+            self.panic_sequence_timer -= dt
+            if self.panic_sequence_timer <= 0:
+                self.advance_panic_sequence(game_state)
+            self.narrator.update(dt)
+            return
+
+        # Si está en pánico y llegó a la salida, activar transición a TarotScene
+        if self.en_panico and self.exit_zone.collidepoint(self.daniela_pos):
+            if self.transition_timer <= 0:  # Solo activar una vez
+                self.narrator.say("¡Logré escapar! Saliendo de la cocina...")
+                self.transition_timer = 1.5  # 1.5 segundos de transición
+
         if self.transition_timer > 0:
             self.transition_timer -= dt
             if self.transition_timer <= 0:
-                from scenes.title import TitleScene
-                self.manager.replace(TitleScene(self.manager))
+                if self.en_panico:
+                    # Ir a la escena Tarot
+                    from scenes.tarot import TarotScene
+                    self.manager.replace(TarotScene(self.manager, self.game_state, self.audio))
+                else:
+                    # Ir a la escena Title (como estaba originalmente)
+                    from scenes.title import TitleScene
+                    self.manager.replace(TitleScene(self.manager))
+                return
 
-        # Movimiento solo si no está sentada
-        if not self.is_sentada:
+        # Si está sentada sin comida (sospechosa), activar el pánico después de un breve momento
+        if self.is_sentada and not self.has_comida and self.comida_timer > 0:
+            self.comida_timer -= dt
+            if self.comida_timer <= 0:
+                # Iniciar secuencia de pánico
+                self.panic_sequence_step = 1
+                self.panic_sequence_timer = 3.0  # 3 segundos para el primer diálogo
+                self.narrator.say("El espíritu me está mirando muy raro...")
+
+        # Si está sentada con comida, contar el tiempo
+        if self.is_sentada and self.has_comida and self.comida_timer > 0:
+            self.comida_timer -= dt
+            if self.comida_timer <= 0:
+                self.is_sentada = False
+                self.narrator.say("Terminé de desayunar. Ahora puedo salir.")
+                # Puede ir a la siguiente escena
+                self.daniela_pos = pygame.Vector2(self.mesa_pos[0] - 80, self.mesa_pos[1] - 50)
+                self.daniela_target = self.daniela_pos.copy()
+
+        # Movimiento (incluyendo cuando está en pánico)
+        if not self.is_sentada and self.panic_sequence_step == 0:
             delta = self.daniela_target - self.daniela_pos
             distance = delta.length()
             
             if distance > 5:
                 self.daniela_pos += delta.normalize() * min(self.daniela_speed * dt, distance)
                 
-                # Actualizar animación como en house
+                # Actualizar animación
                 if self.is_running:
                     self.daniela_state = "corriendo" if self.vestida else "corriendo_pijama"
                 else:
@@ -185,17 +287,60 @@ class KitchenScene(Scene):
                     self.daniela_state = "parada_costado" if self.facing_right else "parada_frente"
                 else:
                     self.daniela_state = "parada_pijama"
-            
-            # Salir por la puerta
-            if self.exit_zone.collidepoint(self.daniela_pos):
-                self.narrator.say("Saliendo de la cocina...")
-                self.transition_timer = 1.5
+                
+                # Si está en pánico y llegó a la salida, ya manejamos esto arriba
+                # Si no está en pánico y llega a la salida, transición a TitleScene
+                if not self.en_panico and self.exit_zone.collidepoint(self.daniela_pos):
+                    self.narrator.say("Saliendo de la cocina...")
+                    self.transition_timer = 1.5
 
         self.narrator.update(dt)
 
+    def advance_panic_sequence(self, game_state):
+        """Avanza a la siguiente etapa de la secuencia de pánico"""
+        self.panic_sequence_step += 1
+        
+        if self.panic_sequence_step == 2:
+            # Segundo diálogo - se levanta asustada
+            self.is_sentada = False
+            self.panic_sequence_timer = 3.0
+            self.narrator.say("¿Estará sospechando de mí?")
+            # Cambiar a sprite de asustada si está disponible
+            if self.daniela_asustada:
+                self.daniela_state = "asustada"
+                
+        elif self.panic_sequence_step == 3:
+            # Tercer diálogo
+            self.panic_sequence_timer = 3.0
+            self.narrator.say("¿Me habrá descubierto?")
+            
+        elif self.panic_sequence_step == 4:
+            # Cuarto diálogo - activar pánico completo
+            self.panic_sequence_timer = 2.0
+            self.narrator.say("¡Tengo que salir de aquí!")
+            
+        elif self.panic_sequence_step == 5:
+            # Activar pánico y hacer que corra
+            self.en_panico = True
+            self.nino_sospechoso = True
+            game_state.add_duality("panic_selfcontrol", -20)  # Mucho pánico
+            # Hacer que corra automáticamente hacia la salida
+            self.daniela_target = pygame.Vector2(self.exit_zone.centerx, self.exit_zone.centery)
+            self.is_running = True
+            self.daniela_speed = 400  # Velocidad muy alta para huir
+            self.panic_sequence_step = 0  # Terminar secuencia
+
     def draw(self, screen, game_state):
         surf = screen
-        surf.blit(self.bg, (0, 0))
+        
+        # Dibujar fondo centrado y más pequeño
+        surf.fill((0, 0, 0))  # Fondo negro alrededor
+        surf.blit(self.bg, (self.bg_x, self.bg_y))
+
+        # Dibujar comida si no ha sido tomada
+        if not self.has_comida and self.comida_img:
+            comida_rect = self.comida_img.get_rect(center=(self.comida_zone.x + 50, self.comida_zone.y + 50))
+            surf.blit(self.comida_img, comida_rect)
 
         # Dibujar mesa si existe
         if self.mesa_img:
@@ -220,17 +365,32 @@ class KitchenScene(Scene):
                 color = (0, 0, 255) if self.vestida else (255, 0, 0)
                 pygame.draw.circle(surf, color, (self.mesa_pos[0] - 80, self.mesa_pos[1] - 50), 30)
         else:
-            # De pie y moviéndose - misma lógica que house
-            current_sprite = self.daniela_estados_pie.get(self.daniela_state)
-            if current_sprite:
+            # De pie y moviéndose
+            if self.daniela_state == "asustada" and self.daniela_asustada:
+                # Usar sprite de asustada si está disponible
+                current_sprite = self.daniela_asustada
                 if not self.facing_right:
                     current_sprite = pygame.transform.flip(current_sprite, True, False)
                 surf.blit(current_sprite, current_sprite.get_rect(center=(int(self.daniela_pos.x), int(self.daniela_pos.y))))
             else:
-                # Placeholder si no hay sprites
-                color = (0, 0, 255) if self.vestida else (255, 0, 0)
-                pygame.draw.circle(surf, color, (int(self.daniela_pos.x), int(self.daniela_pos.y)), 30)
+                # Estado normal
+                current_sprite = self.daniela_estados_pie.get(self.daniela_state)
+                if current_sprite:
+                    # Voltear la imagen cuando mira hacia la izquierda
+                    if not self.facing_right:
+                        current_sprite = pygame.transform.flip(current_sprite, True, False)
+                    surf.blit(current_sprite, current_sprite.get_rect(center=(int(self.daniela_pos.x), int(self.daniela_pos.y))))
+                else:
+                    # Placeholder si no hay sprites
+                    color = (0, 0, 255) if self.vestida else (255, 0, 0)
+                    pygame.draw.circle(surf, color, (int(self.daniela_pos.x), int(self.daniela_pos.y)), 30)
 
-      
+        # Dibujar zona de proximidad de comida (para debugging)
+        # pygame.draw.rect(surf, (0, 255, 0), self.comida_proximity_zone, 2)
+        
+        # Dibujar zona de salida (para debugging)
+        # pygame.draw.rect(surf, (255, 0, 0), self.exit_zone, 2)
+
+        # Mostrar solo el narrador y las estadísticas (sin tips)
         self.narrator.draw(surf)
         self.stats_display.draw(surf)
