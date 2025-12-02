@@ -10,7 +10,8 @@ class KitchenScene(Scene):
         self.game_state = game_state
         self.audio = audio
         self.font = pygame.font.SysFont("arial", 28)
-        self.narrator = Narrator(self.font)
+        self.speaker_font = pygame.font.SysFont("arial", 24, bold=True)
+        self.narrator = Narrator(self.font)  # Mantenemos pero no lo usamos directamente
         self.stats_display = StatsDisplay(game_state)
 
         # Cargar imágenes con escala más pequeña para el fondo
@@ -152,15 +153,38 @@ class KitchenScene(Scene):
         # Variables para la secuencia de pánico
         self.panic_sequence_step = 0
         self.panic_sequence_timer = 0
+        
+        # Variables para el nuevo sistema de diálogos (como en tarot.py)
+        self.current_dialogue = None
+        self.current_speaker = None
+        self.dialogue_timer = 0
+        self.dialogue_duration = 4.0
+        self.can_skip = False
+        self.dialogue_cooldown = 0.5
 
     def on_enter(self):
-        # Configurar el narrador para que los diálogos duren más tiempo
-        self.narrator.display_time = 4.0  # 4 segundos por diálogo
-        self.narrator.say("¿Por qué me mira así? Solo quiero desayunar. No soy nadie.")
+        self.show_dialogue("Daniela", "¿Por qué me mira así? Solo quiero desayunar. No soy nadie.")
+
+    def show_dialogue(self, speaker, text):
+        """Muestra un diálogo con el nombre del hablante (mismo sistema que tarot.py)"""
+        self.current_dialogue = text
+        self.current_speaker = speaker
+        self.dialogue_timer = 0
+        self.can_skip = False
+        self.dialogue_cooldown = 0.5
 
     def handle_event(self, event, game_state):
         if self.input_cooldown > 0 or self.en_panico or self.panic_sequence_step > 0:
             return
+
+        # Manejar clic en diálogos
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.dialogue_cooldown <= 0:
+            if self.can_skip and self.current_dialogue:
+                # Si hay diálogo activo y se puede saltar, quitarlo
+                self.current_dialogue = None
+                self.current_speaker = None
+                self.dialogue_cooldown = 0.5
+                return
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             current_time = pygame.time.get_ticks() / 1000.0
@@ -183,7 +207,7 @@ class KitchenScene(Scene):
                     # Verificar si Daniela está cerca de la comida
                     if self.comida_proximity_zone.collidepoint(self.daniela_pos):
                         self.has_comida = True
-                        self.narrator.say("Tengo mi comida. Ahora puedo sentarme a desayunar.")
+                        self.show_dialogue("Daniela", "Tengo mi comida. Ahora puedo sentarme a desayunar.")
                     # No mostrar mensaje si no está cerca, solo no hacer nada
                     return
                 
@@ -192,7 +216,7 @@ class KitchenScene(Scene):
                     if self.has_comida:
                         self.is_sentada = True
                         self.comida_timer = 5.0  # 5 segundos para desayunar
-                        self.narrator.say("Voy a desayunar un poco...")
+                        self.show_dialogue("Daniela", "Voy a desayunar un poco...")
                     else:
                         # Si se sienta sin comida, el niño se da cuenta y entra en pánico
                         self.is_sentada = True
@@ -218,18 +242,31 @@ class KitchenScene(Scene):
         if self.input_cooldown > 0:
             self.input_cooldown -= dt
 
+        if self.dialogue_cooldown > 0:
+            self.dialogue_cooldown -= dt
+
+        # Actualizar temporizador de diálogo
+        if self.current_dialogue:
+            self.dialogue_timer += dt
+            if self.dialogue_timer >= 1.0:
+                self.can_skip = True
+            
+            # Ocultar diálogo automáticamente después del tiempo
+            if self.dialogue_timer >= self.dialogue_duration:
+                self.current_dialogue = None
+                self.current_speaker = None
+
         # Manejar secuencia de pánico
         if self.panic_sequence_step > 0:
             self.panic_sequence_timer -= dt
             if self.panic_sequence_timer <= 0:
                 self.advance_panic_sequence(game_state)
-            self.narrator.update(dt)
             return
 
         # Si está en pánico y llegó a la salida, activar transición a TarotScene
         if self.en_panico and self.exit_zone.collidepoint(self.daniela_pos):
             if self.transition_timer <= 0:  # Solo activar una vez
-                self.narrator.say("¡Logré escapar! Saliendo de la cocina...")
+                self.show_dialogue("Daniela", "¡Logré escapar! Saliendo de la cocina...")
                 self.transition_timer = 1.5  # 1.5 segundos de transición
 
         if self.transition_timer > 0:
@@ -252,14 +289,14 @@ class KitchenScene(Scene):
                 # Iniciar secuencia de pánico
                 self.panic_sequence_step = 1
                 self.panic_sequence_timer = 3.0  # 3 segundos para el primer diálogo
-                self.narrator.say("El espíritu me está mirando muy raro...")
+                self.show_dialogue("Daniela", "El espíritu me está mirando muy raro...")
 
         # Si está sentada con comida, contar el tiempo
         if self.is_sentada and self.has_comida and self.comida_timer > 0:
             self.comida_timer -= dt
             if self.comida_timer <= 0:
                 self.is_sentada = False
-                self.narrator.say("Terminé de desayunar. Ahora puedo salir.")
+                self.show_dialogue("Daniela", "Terminé de desayunar. Ahora puedo salir.")
                 # Puede ir a la siguiente escena
                 self.daniela_pos = pygame.Vector2(self.mesa_pos[0] - 80, self.mesa_pos[1] - 50)
                 self.daniela_target = self.daniela_pos.copy()
@@ -291,10 +328,8 @@ class KitchenScene(Scene):
                 # Si está en pánico y llegó a la salida, ya manejamos esto arriba
                 # Si no está en pánico y llega a la salida, transición a TitleScene
                 if not self.en_panico and self.exit_zone.collidepoint(self.daniela_pos):
-                    self.narrator.say("Saliendo de la cocina...")
+                    self.show_dialogue("Daniela", "Saliendo de la cocina...")
                     self.transition_timer = 1.5
-
-        self.narrator.update(dt)
 
     def advance_panic_sequence(self, game_state):
         """Avanza a la siguiente etapa de la secuencia de pánico"""
@@ -304,7 +339,7 @@ class KitchenScene(Scene):
             # Segundo diálogo - se levanta asustada
             self.is_sentada = False
             self.panic_sequence_timer = 3.0
-            self.narrator.say("¿Estará sospechando de mí?")
+            self.show_dialogue("Daniela", "¿Estará sospechando de mí?")
             # Cambiar a sprite de asustada si está disponible
             if self.daniela_asustada:
                 self.daniela_state = "asustada"
@@ -312,12 +347,12 @@ class KitchenScene(Scene):
         elif self.panic_sequence_step == 3:
             # Tercer diálogo
             self.panic_sequence_timer = 3.0
-            self.narrator.say("¿Me habrá descubierto?")
+            self.show_dialogue("Daniela", "¿Me habrá descubierto?")
             
         elif self.panic_sequence_step == 4:
             # Cuarto diálogo - activar pánico completo
             self.panic_sequence_timer = 2.0
-            self.narrator.say("¡Tengo que salir de aquí!")
+            self.show_dialogue("Daniela", "¡Tengo que salir de aquí!")
             
         elif self.panic_sequence_step == 5:
             # Activar pánico y hacer que corra
@@ -385,12 +420,63 @@ class KitchenScene(Scene):
                     color = (0, 0, 255) if self.vestida else (255, 0, 0)
                     pygame.draw.circle(surf, color, (int(self.daniela_pos.x), int(self.daniela_pos.y)), 30)
 
-        # Dibujar zona de proximidad de comida (para debugging)
-        # pygame.draw.rect(surf, (0, 255, 0), self.comida_proximity_zone, 2)
+        # Dibujar diálogo con nombre del hablante (mismo estilo que tarot.py)
+        self.draw_dialogue_with_speaker(surf)
         
-        # Dibujar zona de salida (para debugging)
-        # pygame.draw.rect(surf, (255, 0, 0), self.exit_zone, 2)
-
-        # Mostrar solo el narrador y las estadísticas (sin tips)
-        self.narrator.draw(surf)
+        # Dibujar estadísticas
         self.stats_display.draw(surf)
+    
+    def draw_dialogue_with_speaker(self, screen):
+        """Dibuja el diálogo con el nombre del hablante arriba (mismo estilo que tarot.py)"""
+        if not self.current_dialogue:
+            return
+            
+        # Dimensiones del cuadro de diálogo
+        box_width = WIDTH - 100
+        box_height = 100
+        box_x = 50
+        box_y = HEIGHT - box_height - 20
+        
+        # Dibujar cuadro de diálogo
+        pygame.draw.rect(screen, (0, 0, 0, 200), (box_x, box_y, box_width, box_height))
+        pygame.draw.rect(screen, (255, 255, 255), (box_x, box_y, box_width, box_height), 2)
+        
+        # Dibujar nombre del hablante arriba del cuadro
+        if self.current_speaker:
+            # Color según el hablante (solo Daniela en esta escena)
+            if self.current_speaker == "Daniela":
+                speaker_color = (0, 200, 255)  # Cyan para Daniela
+            else:
+                speaker_color = (255, 255, 255)  # Blanco por defecto
+            
+            speaker_text = self.speaker_font.render(self.current_speaker, True, speaker_color)
+            screen.blit(speaker_text, (box_x + 10, box_y - 30))
+        
+        # Dividir texto en líneas
+        words = self.current_dialogue.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            test_width = self.font.size(test_line)[0]
+            
+            if test_width <= box_width - 40:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        
+        if current_line:
+            lines.append(' '.join(current_line))
+        
+        # Dibujar líneas de texto (máximo 3 líneas)
+        for i, line in enumerate(lines):
+            if i < 3:
+                text_surf = self.font.render(line, True, (255, 255, 255))
+                screen.blit(text_surf, (box_x + 20, box_y + 15 + i * 30))
+        
+        # Indicador de "clic para continuar" si se puede saltar
+        if self.can_skip:
+            skip_text = self.font.render("Clic para continuar", True, (200, 200, 200))
+            screen.blit(skip_text, (box_x + box_width - skip_text.get_width() - 20, box_y + box_height - 30))

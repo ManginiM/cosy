@@ -10,6 +10,7 @@ class HouseScene(Scene):
         self.state = state
         self.audio = audio
         self.font = pygame.font.SysFont("arial", 28)
+        self.speaker_font = pygame.font.SysFont("arial", 24, bold=True)
         self.narrator = Narrator(self.font)
         self.stats_display = StatsDisplay(state)
 
@@ -19,7 +20,7 @@ class HouseScene(Scene):
         
         # Cama sin deformar
         self.cama_icon = pygame.image.load("assets/images/cama_icon.png").convert_alpha()
-        self.cama_icon = pygame.transform.smoothscale(self.cama_icon, (250, 180))  # Tamaño ajustado
+        self.cama_icon = pygame.transform.smoothscale(self.cama_icon, (250, 180))
 
         # Estados de Daniela - volteamos las imágenes problemáticas al cargarlas
         self.daniela_states = {}
@@ -45,7 +46,7 @@ class HouseScene(Scene):
         self.daniela_pos = pygame.Vector2(WIDTH - 640, HEIGHT - 370)
         self.daniela_target = self.daniela_pos.copy()
         self.anciana_zone = pygame.Rect(WIDTH - 220, HEIGHT - 300, 200, 300)
-        self.placard_zone = pygame.Rect(580, HEIGHT - 510, 130, 220)  # Más pequeño
+        self.placard_zone = pygame.Rect(580, HEIGHT - 510, 130, 220)
         self.door_zone = pygame.Rect(WIDTH - 250, HEIGHT // 2 - 200, 200, 400)
 
         # Cargar otros elementos
@@ -72,13 +73,38 @@ class HouseScene(Scene):
         self.has_exited = False
         self.transition_timer = 0
         self.last_click_time = 0
+        
+        # Variables para el nuevo sistema de diálogos
+        self.current_dialogue = None
+        self.current_speaker = None
+        self.dialogue_timer = 0
+        self.dialogue_duration = 4.0
+        self.can_skip = False
+        self.dialogue_cooldown = 0.5
 
     def on_enter(self):
-        self.narrator.say("No está ahí. No está ahí. Solo vestite. No la mires.")
+        self.show_dialogue("Daniela", "No está ahí. No está ahí. Solo vestite. No la mires.")
+
+    def show_dialogue(self, speaker, text):
+        """Muestra un diálogo con el nombre del hablante"""
+        self.current_dialogue = text
+        self.current_speaker = speaker
+        self.dialogue_timer = 0
+        self.can_skip = False
+        self.dialogue_cooldown = 0.5
 
     def handle_event(self, event, game_state):
         if self.input_cooldown > 0:
             return
+
+        # Manejar clic en diálogos
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self.dialogue_cooldown <= 0:
+            if self.can_skip and self.current_dialogue:
+                # Si hay diálogo activo y se puede saltar, quitarlo
+                self.current_dialogue = None
+                self.current_speaker = None
+                self.dialogue_cooldown = 0.5
+                return
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             current_time = pygame.time.get_ticks() / 1000.0
@@ -87,7 +113,7 @@ class HouseScene(Scene):
 
             if self.daniela_state == "en_cama":
                 self.daniela_state = "parada_pijama"
-                self.narrator.say("Me tengo que levantar...")
+                self.show_dialogue("Daniela", "Me tengo que levantar...")
                 return
 
             if self.daniela_state != "en_cama":
@@ -108,11 +134,25 @@ class HouseScene(Scene):
         if self.input_cooldown > 0:
             self.input_cooldown -= dt
 
+        if self.dialogue_cooldown > 0:
+            self.dialogue_cooldown -= dt
+
         if self.transition_timer > 0:
             self.transition_timer -= dt
             if self.transition_timer <= 0:
-                from scenes.kitchen import KitchenScene  # Cambia ForestScene por KitchenScene
+                from scenes.kitchen import KitchenScene
                 self.manager.replace(KitchenScene(self.manager, game_state, self.audio))
+
+        # Actualizar temporizador de diálogo
+        if self.current_dialogue:
+            self.dialogue_timer += dt
+            if self.dialogue_timer >= 1.0:
+                self.can_skip = True
+            
+            # Ocultar diálogo automáticamente después del tiempo
+            if self.dialogue_timer >= self.dialogue_duration:
+                self.current_dialogue = None
+                self.current_speaker = None
 
         if self.daniela_state != "en_cama":
             delta = self.daniela_target - self.daniela_pos
@@ -126,14 +166,13 @@ class HouseScene(Scene):
                     self.daniela_state = "corriendo" if self.vestida else "corriendo_pijama"
                 else:
                     if self.vestida:
-                        self.daniela_state = "caminando"  # Siempre caminando cuando se mueve
+                        self.daniela_state = "caminando"
                     else:
                         self.daniela_state = "parada_pijama"
             else:
                 # Cuando deja de moverse
                 self.is_moving = False
                 if self.vestida:
-                    # Si está vestida, usar parada_costado si mira de costado, parada_frente si mira de frente
                     self.daniela_state = "parada_costado" if abs(delta.x) > abs(delta.y) else "parada_frente"
                 else:
                     self.daniela_state = "parada_pijama"
@@ -143,13 +182,13 @@ class HouseScene(Scene):
                     self.anciana_detected = True
                     game_state.add_duality("panic_selfcontrol", -15)
                     self.daniela_state = "asustada"
-                    self.narrator.say("¡La miré! No debía mirarla...")
+                    self.show_dialogue("Daniela", "¡La miré! No debía mirarla...")
                 
                 if self.placard_zone.collidepoint(self.daniela_pos) and not self.vestida:
                     self.vestida = True
                     game_state.set_flag("vestida", True)
                     game_state.add_duality("panic_selfcontrol", 8)
-                    self.narrator.say("Ropa puesta. Ahora puedo salir...")
+                    self.show_dialogue("Daniela", "Ropa puesta. Ahora puedo salir...")
                     # Cambiar inmediatamente al sprite vestido
                     self.daniela_state = "parada_frente"
                     self.placard_img = pygame.image.load("assets/images/percha_sin_uniforme.png").convert_alpha()
@@ -157,10 +196,8 @@ class HouseScene(Scene):
 
                 if self.door_zone.collidepoint(self.daniela_pos) and self.vestida and not self.has_exited:
                     self.has_exited = True
-                    self.narrator.say("Saliendo de la habitación...")
+                    self.show_dialogue("Daniela", "Saliendo de la habitación...")
                     self.transition_timer = 1.5
-
-        self.narrator.update(dt)
 
     def draw(self, screen, game_state):
         surf = screen
@@ -183,6 +220,62 @@ class HouseScene(Scene):
                 current_sprite = pygame.transform.flip(current_sprite, True, False)
             surf.blit(current_sprite, current_sprite.get_rect(center=(int(self.daniela_pos.x), int(self.daniela_pos.y))))
 
-    
-        self.narrator.draw(surf)
+        # Dibujar diálogo con nombre del hablante (como en tarot.py)
+        self.draw_dialogue_with_speaker(surf)
+        
         self.stats_display.draw(surf)
+    
+    def draw_dialogue_with_speaker(self, screen):
+        """Dibuja el diálogo con el nombre del hablante arriba (mismo estilo que tarot.py)"""
+        if not self.current_dialogue:
+            return
+            
+        # Dimensiones del cuadro de diálogo
+        box_width = WIDTH - 100
+        box_height = 100
+        box_x = 50
+        box_y = HEIGHT - box_height - 20
+        
+        # Dibujar cuadro de diálogo
+        pygame.draw.rect(screen, (0, 0, 0, 200), (box_x, box_y, box_width, box_height))
+        pygame.draw.rect(screen, (255, 255, 255), (box_x, box_y, box_width, box_height), 2)
+        
+        # Dibujar nombre del hablante arriba del cuadro
+        if self.current_speaker:
+            # Color según el hablante (solo Daniela en esta escena)
+            if self.current_speaker == "Daniela":
+                speaker_color = (0, 200, 255)  # Cyan para Daniela
+            else:
+                speaker_color = (255, 255, 255)  # Blanco por defecto
+            
+            speaker_text = self.speaker_font.render(self.current_speaker, True, speaker_color)
+            screen.blit(speaker_text, (box_x + 10, box_y - 30))
+        
+        # Dividir texto en líneas
+        words = self.current_dialogue.split(' ')
+        lines = []
+        current_line = []
+        
+        for word in words:
+            test_line = ' '.join(current_line + [word])
+            test_width = self.font.size(test_line)[0]
+            
+            if test_width <= box_width - 40:
+                current_line.append(word)
+            else:
+                lines.append(' '.join(current_line))
+                current_line = [word]
+        
+        if current_line:
+            lines.append(' '.join(current_line))
+        
+        # Dibujar líneas de texto (máximo 3 líneas)
+        for i, line in enumerate(lines):
+            if i < 3:
+                text_surf = self.font.render(line, True, (255, 255, 255))
+                screen.blit(text_surf, (box_x + 20, box_y + 15 + i * 30))
+        
+        # Indicador de "clic para continuar" si se puede saltar
+        if self.can_skip:
+            skip_text = self.font.render("Clic para continuar", True, (200, 200, 200))
+            screen.blit(skip_text, (box_x + box_width - skip_text.get_width() - 20, box_y + box_height - 30))

@@ -4,13 +4,13 @@ from engine.scene_manager import Scene
 from engine.narrator import Narrator
 from engine.ui import StatsDisplay
 
-class TarotScene(Scene):
+class TarotRechasScene(Scene):
     def __init__(self, manager, game_state, audio):
         super().__init__(manager)
         self.game_state = game_state
         self.audio = audio
         self.font = pygame.font.SysFont("arial", 28)
-        self.speaker_font = pygame.font.SysFont("arial", 24, bold=True)  # Fuente para nombres
+        self.speaker_font = pygame.font.SysFont("arial", 24, bold=True)
         self.narrator = Narrator(self.font)
         self.stats_display = StatsDisplay(game_state)
 
@@ -18,7 +18,7 @@ class TarotScene(Scene):
         self.state = "INTRO"
         self.waiting_for_click = True
         
-        # Cargar imágenes
+        # Cargar imágenes - MISMO FONDO Y PERSONAJES QUE ESCENA 2
         try:
             self.bg = pygame.image.load("assets/images/casa_tarot_bg.png").convert()
             self.bg = pygame.transform.smoothscale(self.bg, (WIDTH, HEIGHT))
@@ -56,27 +56,40 @@ class TarotScene(Scene):
         except:
             self.tarotista_habla = None
 
-        # Diálogos con nombres - MISMO ESTILO QUE ESCENA 2 PERO CON NOMBRES
+        # Obtener estadísticas del jardín
+        self.spirits_listened = 0
+        self.darknesses_cleaned = 0
+        self.spirits_cleaned = 0
+        
+        # Intentar obtener flags
+        if hasattr(game_state, 'flags'):
+            self.spirits_listened = game_state.flags.get("espiritus_escuchados", 0)
+            self.darknesses_cleaned = game_state.flags.get("oscuridades_limpiadas", 0)
+            self.spirits_cleaned = game_state.flags.get("espiritus_limpiados", 0)
+
+        # Diálogos con nombres - BASADO EN DECISIÓN DE RENUNCIAR AL PODER
         self.dialogues = [
-            {"speaker": "Elena", "text": "Has atraído demasiados ojos, pequeña. Vienes acompañada."},
-            {"speaker": "Daniela", "text": "¿Qué? ¿De qué está hablando? Solo vine a refugiarme..."},
-            {"speaker": "Elena", "text": "A mi no me intentes engañar. Los veo a tu alrededor. Espíritus hambrientos de atención."},
-            {"speaker": "Daniela", "text": "... No. No es posible que sepa."},
-            {"speaker": "Elena", "text": "Lo sé porque también los veo. Como tú. Pero yo aprendí a escucharlos."},
-            {"speaker": "Daniela", "text": "Pero no quiero. Cada vez que los veo, es peor."},
-            {"speaker": "Daniela", "text": "No quiero ver nada. Solo quiero ser normal."},
-            {"speaker": "Elena", "text": "Normalidad es una mentira que nos contamos. El Jardín de los Susurros te espera."},
-            {"speaker": "Daniela", "text": "¿El Jardín de los Susurros? ¿Qué es eso?"},
-            {"speaker": "Elena", "text": "Un lugar donde los velos son delgados. Allí, los espíritus hablan claro."},
-            {"speaker": "Elena", "text": "El jardín está en peligro. Algo lo corrompe desde dentro."},
-            {"speaker": "Daniela", "text": "¿Y qué tengo que ver yo con eso?"},
-            {"speaker": "Elena", "text": "Tú eres un faro para ellos. Te siguen porque necesitan algo que solo tú puedes dar."},
-            {"speaker": "Daniela", "text": "No puedo ayudar a nadie. Ni siquiera puedo ayudarme a mí misma."},
-            {"speaker": "Elena", "text": "En el jardín, tendrás una elección: escuchar sus historias o rechazar sus llamados."},
-            {"speaker": "Elena", "text": "Si escuchas, encontrarás compasión. Si ignoras, encontrarás paz, pero a un costo."},
-            {"speaker": "Daniela", "text": "¿Y si elijo mal?"},
-            {"speaker": "Elena", "text": "No hay elección correcta. Solo tu camino. Ve ahora, antes de que el jardín se pierda."},
+            {"speaker": "Daniela", "text": "He vuelto... y he hecho lo que pediste."},
+            {"speaker": "Elena", "text": "Lo veo. Las sombras del jardín están más tranquilas."},
         ]
+        
+        # Diálogo diferente dependiendo de si escuchó espíritus
+        if self.spirits_listened > 0:
+            self.dialogues.append({"speaker": "Daniela", "text": f"Escuché a {self.spirits_listened} de ellos... y fue demasiado."})
+            self.dialogues.append({"speaker": "Elena", "text": "El entendimiento sin compasión es un peso demasiado grande para algunos."})
+        else:
+            self.dialogues.append({"speaker": "Daniela", "text": f"Limpié {self.darknesses_cleaned} oscuridades, pero no quise escuchar sus historias."})
+            self.dialogues.append({"speaker": "Elena", "text": "Ignorar el dolor no lo hace desaparecer. Solo lo hace invisible para ti."})
+        
+        # Continuación de diálogos
+        self.dialogues.extend([
+            {"speaker": "Daniela", "text": "No importa. Solo quiero que esto termine. Cumple tu parte del trato."},
+            {"speaker": "Elena", "text": "¿Estás segura? Una vez que cierres esta puerta, no podrás volver a abrirla."},
+            {"speaker": "Daniela", "text": "Estoy segura. No quiero ver nada más. No quiero escuchar nada más."},
+            {"speaker": "Elena", "text": "Como desees. Pero recuerda: lo que ignoras no deja de existir. Solo dejarás de verlo."},
+            {"speaker": "Daniela", "text": "Es suficiente con eso. Solo quiero ser normal."},
+            {"speaker": "Elena", "text": "La normalidad es una mentira que nos contamos para sentirnos seguros. Pero te concederé tu deseo."},
+        ])
         
         self.current_dialogue = 0
         self.dialogue_timer = 0
@@ -85,13 +98,13 @@ class TarotScene(Scene):
         self.current_speaker = None
         self.current_dialogue_text = ""
 
-        # Opciones al final - botones simples sin fondo negro
-        self.options = ["Aceptar la misión", "Postergar la salida"]
+        # Opciones al final - diferentes para esta escena
+        self.options = ["Confirmar la renuncia", "Pensarlo una vez más"]
         self.selected_option = 0
         self.show_options = False
-        self.option_selected = False  # Para evitar selección múltiple
+        self.option_selected = False
 
-        # Posiciones - más arriba
+        # Posiciones
         self.daniela_start_pos = pygame.Vector2(-100, HEIGHT - 180)
         self.daniela_target_pos = pygame.Vector2(WIDTH // 3, HEIGHT - 180)
         self.daniela_pos = self.daniela_start_pos.copy()
@@ -114,7 +127,6 @@ class TarotScene(Scene):
         self.daniela_pos = self.daniela_start_pos.copy()
         self.daniela_moving = True
         
-        # Inicializar diálogo actual
         if self.dialogues:
             dialogue = self.dialogues[self.current_dialogue]
             self.current_speaker = dialogue["speaker"]
@@ -151,12 +163,10 @@ class TarotScene(Scene):
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 x, y = event.pos
                 
-                # Verificar clic en opciones (botones simples, sin fondo)
                 option_height = 60
                 option_start_y = HEIGHT // 2 - 30
                 
                 for i, option in enumerate(self.options):
-                    # Crear rectángulo invisible para el clic (más grande para mejor usabilidad)
                     option_rect = pygame.Rect(
                         WIDTH // 2 - 200, 
                         option_start_y + i * option_height, 
@@ -171,16 +181,20 @@ class TarotScene(Scene):
 
     def select_option(self, game_state):
         if self.selected_option == 0:
+            # Confirmar renuncia - FINAL NEGATIVO
             self.current_speaker = "Daniela"
-            self.current_dialogue_text = "Está bien... iré al Jardín de los Susurros."
-            self.transition_timer = 3.0  # Dar tiempo para leer el diálogo
-            self.transition_target = "garden"
-        else:
-            game_state.add_duality("rejection_understanding", -8)
-            self.current_speaker = "Daniela"
-            self.current_dialogue_text = "Necesito más tiempo para pensarlo..."
+            self.current_dialogue_text = "Lo confirmo. Haz que desaparezca todo. Quiero ser normal."
+            game_state.add_duality("rejection_understanding", -50)
+            game_state.add_duality("panic_selfcontrol", 50)  # Aumenta autocontrol (pierde miedo)
             self.transition_timer = 3.0
-            self.transition_target = "title"
+            self.transition_target = "ending_rechas"
+        else:
+            # Pensarlo más - FINAL NEUTRO-NEGATIVO
+            self.current_speaker = "Daniela"
+            self.current_dialogue_text = "Tal vez... tal vez necesite más tiempo para decidir."
+            game_state.add_duality("rejection_understanding", -20)
+            self.transition_timer = 3.0
+            self.transition_target = "ending_doubt"
 
     def update(self, dt, game_state):
         if self.dialogue_cooldown > 0:
@@ -217,23 +231,48 @@ class TarotScene(Scene):
         if hasattr(self, 'transition_timer') and self.transition_timer > 0:
             self.transition_timer -= dt
             if self.transition_timer <= 0:
-                if self.transition_target == "garden":
-                    from scenes.garden import GardenScene
-                    self.manager.replace(GardenScene(self.manager, self.game_state, self.audio))
-                else:
+                if self.transition_target == "ending_rechas":
+                    self.show_final_screen = True
+                    self.final_text = [
+                        "FINAL: LA NEGACIÓN",
+                        f"Daniela renunció a su don para siempre.",
+                        f"Limpió {self.darknesses_cleaned} oscuridades pero nunca conoció",
+                        "las historias detrás de ellas.",
+                        "La paz que encontró fue frágil, y las sombras que ignoró",
+                        "continuaron atormentando a otros."
+                    ]
+                    self.final_timer = 5.0
+                elif self.transition_target == "ending_doubt":
+                    self.show_final_screen = True
+                    self.final_text = [
+                        "FINAL: LA DUDA PERMANENTE",
+                        f"Daniela no pudo decidirse, atrapada entre el miedo y la curiosidad.",
+                        f"Escuchó {self.spirits_listened} historias pero no pudo aceptarlas.",
+                        "Vive en un limbo, viendo sombras pero negándose a escucharlas,",
+                        "atrapada entre dos mundos sin pertenecer a ninguno."
+                    ]
+                    self.final_timer = 5.0
+
+        if hasattr(self, 'show_final_screen') and self.show_final_screen:
+            if hasattr(self, 'final_timer'):
+                self.final_timer -= dt
+                if self.final_timer <= 0:
                     from scenes.title import TitleScene
                     self.manager.replace(TitleScene(self.manager))
 
         self.narrator.update(dt)
 
     def draw(self, screen, game_state):
+        if hasattr(self, 'show_final_screen') and self.show_final_screen:
+            self.draw_final_screen(screen)
+            return
+            
         if self.state == "INTRO":
             screen.fill((0, 0, 0))
             font_large = pygame.font.SysFont("arial", 36)
             font_small = pygame.font.SysFont("arial", 24)
             
-            text1 = font_large.render("Daniela corrió por mucho rato hasta que se perdió,", True, (255, 255, 255))
-            text2 = font_large.render("y encontró la tienda de una señora", True, (255, 255, 255))
+            text1 = font_large.render("Daniela regresa a la tienda, agotada pero determinada.", True, (255, 255, 255))
             hint = font_small.render("(Haz clic para continuar)", True, (150, 150, 150))
             
             text1_rect = text1.get_rect(center=(WIDTH//2, HEIGHT//2 - 30))
@@ -247,36 +286,27 @@ class TarotScene(Scene):
         else:
             screen.blit(self.bg, (0, 0))
 
-            # Dibujar personajes
-            # Daniela - durante la entrada usa sprite caminando, después asustada
             if self.state == "ENTRANDO" and self.daniela_caminando:
                 screen.blit(self.daniela_caminando, self.daniela_caminando.get_rect(center=(int(self.daniela_pos.x), int(self.daniela_pos.y))))
             elif self.daniela_asustada:
                 screen.blit(self.daniela_asustada, self.daniela_asustada.get_rect(center=(int(self.daniela_pos.x), int(self.daniela_pos.y))))
 
-            # Tarotista: si está hablando Elena, usar tarotista_habla, sino tarotista_frente
             if self.state == "DIALOGO" and self.current_dialogue < len(self.dialogues):
-                # Los diálogos pares son de Elena (0, 2, 4...)
                 if self.dialogues[self.current_dialogue]["speaker"] == "Elena" and self.tarotista_habla:
                     screen.blit(self.tarotista_habla, self.tarotista_habla.get_rect(center=self.tarotista_pos))
                 elif self.tarotista_frente:
                     screen.blit(self.tarotista_frente, self.tarotista_frente.get_rect(center=self.tarotista_pos))
             else:
-                # Por defecto, tarotista de frente
                 if self.tarotista_frente:
                     screen.blit(self.tarotista_frente, self.tarotista_frente.get_rect(center=self.tarotista_pos))
 
-            # Si estamos en exploración y mostrar opciones
             if self.state == "EXPLORAR" and self.show_options and not self.option_selected:
                 self.draw_options_ui(screen)
 
-        # Dibujar diálogo con nombre del hablante
         self.draw_dialogue_with_speaker(screen)
         self.stats_display.draw(screen)
     
     def draw_dialogue_with_speaker(self, screen):
-        """Dibuja el diálogo con el nombre del hablante arriba"""
-        # Solo dibujar si hay diálogo activo o estamos en estado DIALOGO o transición
         if (self.state == "DIALOGO" or 
             (hasattr(self, 'transition_timer') and self.transition_timer > 0) or
             (self.state == "EXPLORAR" and self.option_selected)):
@@ -284,30 +314,25 @@ class TarotScene(Scene):
             if not self.current_dialogue_text:
                 return
                 
-            # Dimensiones del cuadro de diálogo
             box_width = WIDTH - 100
             box_height = 100
             box_x = 50
             box_y = HEIGHT - box_height - 20
             
-            # Dibujar cuadro de diálogo
             pygame.draw.rect(screen, (0, 0, 0, 200), (box_x, box_y, box_width, box_height))
             pygame.draw.rect(screen, (255, 255, 255), (box_x, box_y, box_width, box_height), 2)
             
-            # Dibujar nombre del hablante arriba del cuadro
             if self.current_speaker:
-                # Color según el hablante
                 if self.current_speaker == "Elena":
-                    speaker_color = (255, 215, 0)  # Dorado para Elena
+                    speaker_color = (255, 215, 0)
                 elif self.current_speaker == "Daniela":
-                    speaker_color = (0, 200, 255)  # Cyan para Daniela
+                    speaker_color = (0, 200, 255)
                 else:
-                    speaker_color = (255, 255, 255)  # Blanco por defecto
+                    speaker_color = (255, 255, 255)
                 
                 speaker_text = self.speaker_font.render(self.current_speaker, True, speaker_color)
                 screen.blit(speaker_text, (box_x + 10, box_y - 30))
             
-            # Dibujar texto del diálogo (con salto de línea si es necesario)
             words = self.current_dialogue_text.split(' ')
             lines = []
             current_line = []
@@ -325,29 +350,24 @@ class TarotScene(Scene):
             if current_line:
                 lines.append(' '.join(current_line))
             
-            # Dibujar líneas de texto
             for i, line in enumerate(lines):
-                if i < 3:  # Máximo 3 líneas
+                if i < 3:
                     text_surf = self.font.render(line, True, (255, 255, 255))
                     screen.blit(text_surf, (box_x + 20, box_y + 15 + i * 30))
             
-            # Indicador de "clic para continuar" si se puede saltar
             if self.can_skip and self.state == "DIALOGO":
                 skip_text = self.font.render("Clic para continuar", True, (200, 200, 200))
                 screen.blit(skip_text, (box_x + box_width - skip_text.get_width() - 20, box_y + box_height - 30))
     
     def draw_options_ui(self, screen):
-        """Dibuja las opciones con estilo simple y claro"""
         option_height = 60
         option_start_y = HEIGHT // 2 - 30
         
-        # Título de las opciones
         title_font = pygame.font.SysFont("arial", 32, bold=True)
-        title = title_font.render("¿Qué decides hacer?", True, (255, 255, 255))
+        title = title_font.render("¿Confirmas tu decisión?", True, (255, 255, 255))
         screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 100))
         
         for i, option in enumerate(self.options):
-            # Determinar colores según estado
             is_hovered = False
             mouse_pos = pygame.mouse.get_pos()
             option_rect = pygame.Rect(
@@ -356,45 +376,62 @@ class TarotScene(Scene):
                 400, 50
             )
             
-            # Verificar hover
             if option_rect.collidepoint(mouse_pos):
                 is_hovered = True
             
-            # Colores según estado
             if i == self.selected_option and self.option_selected:
-                # Ya fue seleccionada
-                text_color = (255, 215, 0)  # Dorado
-                bg_color = (60, 40, 80, 180)  # Morado oscuro semi-transparente
-                border_color = (255, 215, 0)  # Dorado
+                text_color = (255, 150, 150)
+                bg_color = (80, 40, 60, 180)
+                border_color = (255, 150, 150)
             elif is_hovered:
-                # Mouse encima
-                text_color = (255, 255, 255)  # Blanco
-                bg_color = (80, 60, 100, 200)  # Morado medio semi-transparente
-                border_color = (200, 180, 255)  # Morado claro
+                text_color = (255, 255, 255)
+                bg_color = (100, 60, 80, 200)
+                border_color = (255, 180, 180)
             else:
-                # Normal
-                text_color = (220, 220, 220)  # Gris claro
-                bg_color = (50, 30, 70, 150)  # Morado muy oscuro semi-transparente
-                border_color = (150, 120, 180)  # Morado medio
+                text_color = (220, 220, 220)
+                bg_color = (70, 30, 50, 150)
+                border_color = (180, 120, 150)
             
-            # Dibujar fondo semi-transparente
             s = pygame.Surface((option_rect.width, option_rect.height), pygame.SRCALPHA)
             s.fill(bg_color)
             screen.blit(s, option_rect)
             
-            # Dibujar borde
             pygame.draw.rect(screen, border_color, option_rect, 3, border_radius=8)
             
-            # Texto
             option_surf = self.font.render(option, True, text_color)
             option_text_rect = option_surf.get_rect(center=option_rect.center)
             screen.blit(option_surf, option_text_rect)
             
-            # Indicador de selección (flecha o checkmark)
             if i == self.selected_option and self.option_selected:
-                check_surf = self.font.render("✓", True, (255, 215, 0))
+                check_surf = self.font.render("✓", True, (255, 150, 150))
                 screen.blit(check_surf, (option_rect.right - 40, option_rect.centery - 15))
             elif is_hovered:
-                # Flecha para indicar hover
                 arrow_surf = self.font.render("→", True, (255, 255, 255))
                 screen.blit(arrow_surf, (option_rect.left + 20, option_rect.centery - 15))
+    
+    def draw_final_screen(self, screen):
+        screen.fill((0, 0, 0))
+        
+        title_font = pygame.font.SysFont("arial", 36, bold=True)
+        text_font = pygame.font.SysFont("arial", 24)
+        stats_font = pygame.font.SysFont("arial", 20)
+        
+        title = title_font.render(self.final_text[0], True, (255, 150, 150))
+        screen.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 4))
+        
+        for i, line in enumerate(self.final_text[1:], 1):
+            text = text_font.render(line, True, (255, 200, 200))
+            screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 3 + i * 40))
+        
+        stats_y = HEIGHT // 2 + 150
+        stats = [
+            f"Rechazo final: {self.game_state.dualities['rejection_understanding']}",
+            f"Autocontrol final: {self.game_state.dualities['panic_selfcontrol']}"
+        ]
+        
+        for i, stat in enumerate(stats):
+            stat_text = stats_font.render(stat, True, (255, 200, 200))
+            screen.blit(stat_text, (WIDTH // 2 - stat_text.get_width() // 2, stats_y + i * 35))
+        
+        continue_text = text_font.render("Clic para volver al menú principal", True, (255, 200, 200))
+        screen.blit(continue_text, (WIDTH // 2 - continue_text.get_width() // 2, HEIGHT - 100))
