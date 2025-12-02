@@ -78,17 +78,17 @@ class TarotRechasScene(Scene):
             self.dialogues.append({"speaker": "Daniela", "text": f"Escuché a {self.spirits_listened} de ellos... y fue demasiado."})
             self.dialogues.append({"speaker": "Elena", "text": "El entendimiento sin compasión es un peso demasiado grande para algunos."})
         else:
-            self.dialogues.append({"speaker": "Daniela", "text": f"Limpié {self.darknesses_cleaned} oscuridades, pero no quise escuchar sus historias."})
-            self.dialogues.append({"speaker": "Elena", "text": "Ignorar el dolor no lo hace desaparecer. Solo lo hace invisible para ti."})
+            self.dialogues.append({"speaker": "Daniela", "text": f"Limpié {self.darknesses_cleaned} oscuridades, termine mi tarea."})
+            self.dialogues.append({"speaker": "Elena", "text": "Hay muchas formas de hacer una cosa, podrias a ver..."})
         
         # Continuación de diálogos
         self.dialogues.extend([
-            {"speaker": "Daniela", "text": "No importa. Solo quiero que esto termine. Cumple tu parte del trato."},
+            {"speaker": "Daniela", "text": "No importa!"},
+            {"speaker": "Daniela", "text": "Solo quiero que esto termine."},
+            {"speaker": "Daniela", "text": "Cumple tu parte del trato."},
             {"speaker": "Elena", "text": "¿Estás segura? Una vez que cierres esta puerta, no podrás volver a abrirla."},
-            {"speaker": "Daniela", "text": "Estoy segura. No quiero ver nada más. No quiero escuchar nada más."},
-            {"speaker": "Elena", "text": "Como desees. Pero recuerda: lo que ignoras no deja de existir. Solo dejarás de verlo."},
-            {"speaker": "Daniela", "text": "Es suficiente con eso. Solo quiero ser normal."},
-            {"speaker": "Elena", "text": "La normalidad es una mentira que nos contamos para sentirnos seguros. Pero te concederé tu deseo."},
+            {"speaker": "Daniela", "text": "Estoy segura."},
+            {"speaker": "Elena", "text": "Como desees. Pero recuerda: lo que ignoras no deja de existir. Solo dejarás de verlo."}
         ])
         
         self.current_dialogue = 0
@@ -182,8 +182,6 @@ class TarotRechasScene(Scene):
     def select_option(self, game_state):
         if self.selected_option == 0:
             # Confirmar renuncia - FINAL NEGATIVO
-            self.current_speaker = "Daniela"
-            self.current_dialogue_text = "Lo confirmo. Haz que desaparezca todo. Quiero ser normal."
             game_state.add_duality("rejection_understanding", -50)
             game_state.add_duality("panic_selfcontrol", 50)  # Aumenta autocontrol (pierde miedo)
             self.transition_timer = 3.0
@@ -235,21 +233,14 @@ class TarotRechasScene(Scene):
                     self.show_final_screen = True
                     self.final_text = [
                         "FINAL: LA NEGACIÓN",
-                        f"Daniela renunció a su don para siempre.",
-                        f"Limpió {self.darknesses_cleaned} oscuridades pero nunca conoció",
-                        "las historias detrás de ellas.",
-                        "La paz que encontró fue frágil, y las sombras que ignoró",
-                        "continuaron atormentando a otros."
+                        f"Daniela renunció a su don para siempre."
                     ]
                     self.final_timer = 5.0
                 elif self.transition_target == "ending_doubt":
                     self.show_final_screen = True
                     self.final_text = [
                         "FINAL: LA DUDA PERMANENTE",
-                        f"Daniela no pudo decidirse, atrapada entre el miedo y la curiosidad.",
-                        f"Escuchó {self.spirits_listened} historias pero no pudo aceptarlas.",
-                        "Vive en un limbo, viendo sombras pero negándose a escucharlas,",
-                        "atrapada entre dos mundos sin pertenecer a ninguno."
+                        f"Daniela no pudo decidirse, atrapada entre el miedo y la curiosidad."
                     ]
                     self.final_timer = 5.0
 

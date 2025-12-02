@@ -75,8 +75,8 @@ class TarotAcepScene(Scene):
         # Diálogos con nombres - BASADO EN DECISIÓN DE CONSERVAR PODER
         self.dialogues = [
             {"speaker": "Daniela", "text": "He vuelto del jardín... pero ahora veo las cosas de otra manera."},
-            {"speaker": "Elena", "text": "Lo veo en tus ojos. El jardín te ha cambiado."},
-            {"speaker": "Daniela", "text": f"Escuché a {self.spirits_listened} espíritus. Sus historias... eran de personas reales."},
+            {"speaker": "Elena", "text": "Lo veo en tus ojos."},
+            {"speaker": "Daniela", "text": f"Escuché a {self.spirits_listened} espíritus. Sus historias..."},
         ]
         
         # Añadir diálogo adicional dependiendo de si limpió espíritus
@@ -87,14 +87,15 @@ class TarotAcepScene(Scene):
             self.dialogues.append({"speaker": "Daniela", "text": "Limpié las oscuridades, pero aún siento que falta algo."})
             self.dialogues.append({"speaker": "Elena", "text": "A veces, el primer paso es el más difícil. Pero lo diste."})
         
-        # Continuación de diálogos
+        # Continuación de diálogos 
         self.dialogues.extend([
             {"speaker": "Daniela", "text": "No quiero perder esta habilidad. Quiero aprender a usarla."},
-            {"speaker": "Elena", "text": "¿Estás segura? El camino del médium no es fácil. Verás dolor, pérdida, desesperación."},
-            {"speaker": "Daniela", "text": "Lo sé. Pero también veré historias que necesitan ser escuchadas. Almas que necesitan paz."},
-            {"speaker": "Elena", "text": "Entonces te guiaré. Aprenderás a distinguir las voces, a proteger tu mente, a dar paz sin perder la tuya."},
+            {"speaker": "Elena", "text": "¿Estás segura? El camino del médium no es fácil..."},
+            {"speaker": "Daniela", "text": "Lo sé. Pero también veré historias que necesitan ser escuchadas"},
+            {"speaker": "Elena", "text": "Entonces te guiaré."},
+            {"speaker": "Elena", "text": "Aprenderás a distinguir las voces, a proteger tu mente, a dar paz sin perder la tuya."},
             {"speaker": "Daniela", "text": "Gracias... por no dejarme sola en esto."},
-            {"speaker": "Elena", "text": "Nunca estuviste sola, Daniela. Solo necesitabas ver que tu don no era una maldición, sino un puente."},
+            {"speaker": "Elena", "text": "Nunca estuviste sola, Daniela."},
         ])
         
         self.current_dialogue = 0
@@ -245,7 +246,6 @@ class TarotAcepScene(Scene):
                     self.final_text = [
                         "FINAL: EL PUENTE ENTRE MUNDOS",
                         f"Daniela aceptó su don y comenzó su entrenamiento con Elena.",
-                        f"Escuchó {self.spirits_listened} historias y ayudó a {self.spirits_cleaned} espíritus.",
                         "Aunque el camino fue difícil, encontró propósito en su dolor,",
                         "convirtiéndose en una guía para los perdidos entre mundos."
                     ]
@@ -254,10 +254,8 @@ class TarotAcepScene(Scene):
                     self.show_final_screen = True
                     self.final_text = [
                         "FINAL: EL CAMINO PROPIO",
-                        f"Daniela decidió tomarse su tiempo para asimilar lo vivido.",
-                        f"Escuchó {self.spirits_listened} historias en el jardín,",
-                        "y aunque no se comprometió de inmediato, su visión había cambiado.",
-                        "El don ya no era una maldición, sino una responsabilidad a su propio ritmo."
+                        f"Daniela decidió tomarse su tiempo para asimilar lo vivido."
+                        "Y aunque no se comprometió de inmediato, su visión había cambiado."
                     ]
                     self.final_timer = 5.0
 
@@ -447,10 +445,7 @@ class TarotAcepScene(Scene):
         
         # Estadísticas
         stats_y = HEIGHT // 2 + 150
-        stats = [
-            f"Espíritus escuchados: {self.spirits_listened}",
-            f"Oscuridades limpiadas: {self.darknesses_cleaned}",
-            f"Espíritus liberados: {self.spirits_cleaned}",
+        stats = [            
             f"Comprensión final: {self.game_state.dualities['rejection_understanding']}",
             f"Autocontrol final: {self.game_state.dualities['panic_selfcontrol']}"
         ]
