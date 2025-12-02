@@ -263,7 +263,9 @@ class TarotRechasScene(Scene):
             font_large = pygame.font.SysFont("arial", 36)
             font_small = pygame.font.SysFont("arial", 24)
             
-            text1 = font_large.render("Daniela regresa a la tienda, agotada pero determinada.", True, (255, 255, 255))
+            # CORRECCIÓN: Dos líneas como en TarotAcepScene
+            text1 = font_large.render("Daniela regresa a la tienda,", True, (255, 255, 255))
+            text2 = font_large.render("agotada pero determinada.", True, (255, 255, 255))
             hint = font_small.render("(Haz clic para continuar)", True, (150, 150, 150))
             
             text1_rect = text1.get_rect(center=(WIDTH//2, HEIGHT//2 - 30))

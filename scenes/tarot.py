@@ -5,7 +5,7 @@ from engine.narrator import Narrator
 from engine.ui import StatsDisplay
 
 class TarotScene(Scene):
-    def __init__(self, manager, game_state, audio):
+    def __init__(self, manager, game_state, audio=None):
         super().__init__(manager)
         self.game_state = game_state
         self.audio = audio
@@ -58,24 +58,19 @@ class TarotScene(Scene):
 
         # Diálogos con nombres - MISMO ESTILO QUE ESCENA 2 PERO CON NOMBRES
         self.dialogues = [
-            {"speaker": "Elena", "text": "Has atraído demasiados ojos, pequeña. Vienes acompañada."},
-            {"speaker": "Daniela", "text": "¿Qué? ¿De qué está hablando? Solo vine a refugiarme..."},
-            {"speaker": "Elena", "text": "A mi no me intentes engañar. Los veo a tu alrededor. Espíritus hambrientos de atención."},
-            {"speaker": "Daniela", "text": "... No. No es posible que sepa."},
+            {"speaker": "Elena", "text": "Has atraído demasiados ojos, pequeña."},
+            {"speaker": "Daniela", "text": "¿Qué? ¿De qué está hablando?"},
+            {"speaker": "Elena", "text": "A mi no me intentes engañar. Los veo a tu alrededor. "},
             {"speaker": "Elena", "text": "Lo sé porque también los veo. Como tú. Pero yo aprendí a escucharlos."},
-            {"speaker": "Daniela", "text": "Pero no quiero. Cada vez que los veo, es peor."},
-            {"speaker": "Daniela", "text": "No quiero ver nada. Solo quiero ser normal."},
-            {"speaker": "Elena", "text": "Normalidad es una mentira que nos contamos. El Jardín de los Susurros te espera."},
-            {"speaker": "Daniela", "text": "¿El Jardín de los Susurros? ¿Qué es eso?"},
-            {"speaker": "Elena", "text": "Un lugar donde los velos son delgados. Allí, los espíritus hablan claro."},
-            {"speaker": "Elena", "text": "El jardín está en peligro. Algo lo corrompe desde dentro."},
+            {"speaker": "Daniela", "text": "Pero no quiero."},
+            {"speaker": "Elena", "text": "El Jardín de los Susurros te espera."},
+            {"speaker": "Daniela", "text": "¿El Jardín de los Susurros?"},
+            {"speaker": "Elena", "text": "El jardín está en peligro..."},
             {"speaker": "Daniela", "text": "¿Y qué tengo que ver yo con eso?"},
-            {"speaker": "Elena", "text": "Tú eres un faro para ellos. Te siguen porque necesitan algo que solo tú puedes dar."},
-            {"speaker": "Daniela", "text": "No puedo ayudar a nadie. Ni siquiera puedo ayudarme a mí misma."},
-            {"speaker": "Elena", "text": "En el jardín, tendrás una elección: escuchar sus historias o rechazar sus llamados."},
-            {"speaker": "Elena", "text": "Si escuchas, encontrarás compasión. Si ignoras, encontrarás paz, pero a un costo."},
-            {"speaker": "Daniela", "text": "¿Y si elijo mal?"},
-            {"speaker": "Elena", "text": "No hay elección correcta. Solo tu camino. Ve ahora, antes de que el jardín se pierda."},
+            {"speaker": "Elena", "text": "Te siguen porque necesitan algo que puedes dar."},
+            {"speaker": "Daniela", "text": "¿Y si no quiero?"},
+            {"speaker": "Elena", "text": "No te dejaran en paz"},
+            {"speaker": "Elena", "text": "Igual es tu elección"}
         ]
         
         self.current_dialogue = 0
@@ -214,11 +209,13 @@ class TarotScene(Scene):
                 else:
                     self.show_dialogue()
 
+        # Manejo de la transición - CORREGIDO
         if hasattr(self, 'transition_timer') and self.transition_timer > 0:
             self.transition_timer -= dt
             if self.transition_timer <= 0:
                 if self.transition_target == "garden":
                     from scenes.garden import GardenScene
+                    # Asegúrate de pasar los parámetros correctos
                     self.manager.replace(GardenScene(self.manager, self.game_state, self.audio))
                 else:
                     from scenes.title import TitleScene

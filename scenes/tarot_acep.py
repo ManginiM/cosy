@@ -245,16 +245,17 @@ class TarotAcepScene(Scene):
                     self.show_final_screen = True
                     self.final_text = [
                         "FINAL: EL PUENTE ENTRE MUNDOS",
-                        f"Daniela aceptó su don y comenzó su entrenamiento con Elena.",
+                        "Daniela aceptó su don y comenzó su entrenamiento con Elena.",
                         "Aunque el camino fue difícil, encontró propósito en su dolor,",
                         "convirtiéndose en una guía para los perdidos entre mundos."
                     ]
                     self.final_timer = 5.0
                 elif self.transition_target == "ending_neutral":
                     self.show_final_screen = True
+                    # CORRECCIÓN: Cadena completa bien formada
                     self.final_text = [
                         "FINAL: EL CAMINO PROPIO",
-                        f"Daniela decidió tomarse su tiempo para asimilar lo vivido."
+                        "Daniela decidió tomarse su tiempo para asimilar lo vivido. ",
                         "Y aunque no se comprometió de inmediato, su visión había cambiado."
                     ]
                     self.final_timer = 5.0

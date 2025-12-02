@@ -25,7 +25,6 @@ class GardenScene(Scene):
 
         # Cargar imágenes de Daniela
         self.daniela_sprites = {}
-        sprite_names = ["quieta", "caminando", "asustada", "escuchando"]
         sprite_files = {
             "quieta": "parada_frente_pr.png",
             "caminando": "caminando_pr.png",
@@ -64,6 +63,9 @@ class GardenScene(Scene):
         self.dialogue_duration = 4.0
         self.can_skip = False
         self.dialogue_cooldown = 0.5
+        
+        # Temporizador de transición
+        self.transition_timer = 0
 
     def load_images(self):
         """Carga todas las imágenes necesarias"""
@@ -209,16 +211,22 @@ class GardenScene(Scene):
 
     def handle_event(self, event, game_state):
         if self.state != "JUGANDO":
-            # Permitir clic para saltar transición final
-            if self.state == "FINAL" and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                self.go_to_next_scene()
-                return
-            
+            # Permitir clic para saltar diálogo inicial
             if self.state == "ENTRADA" and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.current_dialogue and self.can_skip:
                     self.current_dialogue = None
                     self.current_speaker = None
-                    return
+                    self.state = "JUGANDO"
+                return
+            
+            # Permitir clic para saltar diálogo final
+            if self.state == "FINAL" and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.current_dialogue and self.can_skip:
+                    self.current_dialogue = None
+                    self.current_speaker = None
+                    # Comenzar transición inmediatamente
+                    self.transition_timer = 2.0
+                return
             
             return
         
@@ -324,6 +332,15 @@ class GardenScene(Scene):
             # Actualizar estado basado en cercanía (SOLO CUANDO NO SE MUEVE)
             if self.daniela_state != "caminando":
                 self.update_daniela_state()
+        
+        # Manejar temporizador de transición FINAL
+        elif self.state == "FINAL":
+            if self.transition_timer > 0:
+                self.transition_timer -= dt
+                
+                if self.transition_timer <= 0:
+                    self.go_to_next_scene()
+                    return
 
     def update_daniela_movement(self, dt):
         """Actualiza el movimiento de Daniela"""
@@ -398,54 +415,64 @@ class GardenScene(Scene):
             game_state.add_duality("rejection_understanding", -30)
         
         # Guardar decisión para la siguiente escena
-        # Usamos set_flag para guardar la decisión
-        game_state.set_flag("jardin_decision", self.decision_made)
-        game_state.set_flag("espiritus_escuchados", self.spirits_listened)
-        game_state.set_flag("oscuridades_limpiadas", self.darknesses_cleaned)
-        game_state.set_flag("espiritus_limpiados", self.spirits_cleaned)
+        # Asegurarnos de que game_state tenga un diccionario de flags
+        if not hasattr(game_state, 'flags'):
+            game_state.flags = {}
+        
+        game_state.flags["jardin_decision"] = self.decision_made
+        game_state.flags["espiritus_escuchados"] = self.spirits_listened
+        game_state.flags["oscuridades_limpiadas"] = self.darknesses_cleaned
+        game_state.flags["espiritus_limpiados"] = self.spirits_cleaned
+        
+        # DEBUG: Mostrar lo que se guardó
+        print(f"DEBUG: Guardando decisión: {self.decision_made}")
+        print(f"DEBUG: Flags guardados: {game_state.flags}")
         
         self.show_dialogue("Daniela", final_text)
         self.state = "FINAL"
-        self.transition_timer = 2.0
+        self.transition_timer = 0  # Inicialmente 0, se activa después del diálogo
 
     def go_to_next_scene(self):
         """Va a la escena correspondiente según la decisión"""
-        # Necesito verificar cómo se accede a los flags en GameState
-        # Como no hay get_flag, asumo que hay un diccionario 'flags' o similar
-        # Primero intento acceder directamente, si no, creo un método temporal
+        print("DEBUG: Intentando cambiar a siguiente escena...")
         
-        # Intento 1: Asumir que game_state tiene un atributo flags
+        # Obtener la decisión del jugador
+        decision = None
+        
+        # Intentar obtener la decisión guardada
+        if hasattr(self.game_state, 'flags') and self.game_state.flags:
+            decision = self.game_state.flags.get("jardin_decision")
+            print(f"DEBUG: Decisión obtenida de flags: {decision}")
+        
+        # Si no hay decisión guardada, usar la de esta escena
+        if not decision and hasattr(self, 'decision_made'):
+            decision = self.decision_made
+            print(f"DEBUG: Usando decisión local: {decision}")
+        
+        # Si aún no hay decisión, usar comprensión como fallback
+        if not decision:
+            understanding_score = self.game_state.dualities["rejection_understanding"]
+            decision = "CONSERVAR_PODER" if understanding_score >= 50 else "RENUNCIAR_PODER"
+            print(f"DEBUG: Usando fallback por comprensión: {decision}")
+        
+        print(f"DEBUG: Decisión final: {decision}")
+        
+        # Intentar cargar la escena correspondiente
         try:
-            if hasattr(self.game_state, 'flags'):
-                decision = self.game_state.flags.get("jardin_decision", "RENUNCIAR_PODER")
-            else:
-                # Intento 2: Usar un valor por defecto basado en comprensión
-                understanding_score = self.game_state.dualities["rejection_understanding"]
-                decision = "CONSERVAR_PODER" if understanding_score >= 50 else "RENUNCIAR_PODER"
-        except:
-            # Si hay error, uso el valor por defecto
-            decision = "RENUNCIAR_PODER"
-        
-        if "CONSERVAR" in decision:
-            # Ir a tarot_acep.py (aceptación)
-            try:
+            if "CONSERVAR" in decision:
                 from scenes.tarot_acep import TarotAcepScene
+                print("DEBUG: Intentando cargar TarotAcepScene...")
                 self.manager.replace(TarotAcepScene(self.manager, self.game_state, self.audio))
-            except ImportError as e:
-                print(f"Error al cargar tarot_acep.py: {e}")
-                # Fallback al título
-                from scenes.title import TitleScene
-                self.manager.replace(TitleScene(self.manager))
-        else:
-            # Ir a tarot_rechas.py (rechazo)
-            try:
+            else:
                 from scenes.tarot_rechas import TarotRechasScene
+                print("DEBUG: Intentando cargar TarotRechasScene...")
                 self.manager.replace(TarotRechasScene(self.manager, self.game_state, self.audio))
-            except ImportError as e:
-                print(f"Error al cargar tarot_rechas.py: {e}")
-                # Fallback al título
-                from scenes.title import TitleScene
-                self.manager.replace(TitleScene(self.manager))
+        except ImportError as e:
+            print(f"ERROR: No se pudo cargar la escena siguiente: {e}")
+            print(f"ERROR: Asegúrate de que tarot_acep.py y tarot_rechas.py existen en la carpeta scenes/")
+            # Fallback al título
+            from scenes.title import TitleScene
+            self.manager.replace(TitleScene(self.manager))
 
     def draw(self, screen, game_state):
         # Dibujar fondo
@@ -558,15 +585,11 @@ class GardenScene(Scene):
             screen.blit(skip_text, (skip_x, skip_y))
 
     def draw_final_transition(self, screen):
-        """Dibuja la transición final y cambia de escena"""
-        if hasattr(self, 'transition_timer'):
-            if self.transition_timer > 0:
-                # Fade out gradual
+        """Dibuja la transición final"""
+        if self.transition_timer > 0:
+            # Fade out gradual
+            alpha = int(255 * (1 - self.transition_timer / 2.0))
+            if alpha > 0:
                 overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                alpha = int(255 * (1 - self.transition_timer / 2.0))
                 overlay.fill((0, 0, 0, alpha))
                 screen.blit(overlay, (0, 0))
-                self.transition_timer -= 1/60
-            else:
-                # Ir a la siguiente escena según decisión
-                self.go_to_next_scene()
